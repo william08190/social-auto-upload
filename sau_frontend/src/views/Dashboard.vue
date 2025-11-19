@@ -58,7 +58,7 @@
           </el-card>
         </el-col>
         
-        <!-- 任务统计卡片 -->
+        <!-- 素材统计卡片 -->
         <el-col :span="6">
           <el-card class="stat-card">
             <div class="stat-card-content">
@@ -66,21 +66,19 @@
                 <el-icon><List /></el-icon>
               </div>
               <div class="stat-info">
-                <div class="stat-value">{{ taskStats.total }}</div>
-                <div class="stat-label">任务总数</div>
+                <div class="stat-value">{{ contentStats.total }}</div>
+                <div class="stat-label">素材总数</div>
               </div>
             </div>
             <div class="stat-footer">
               <div class="stat-detail">
-                <span>完成: {{ taskStats.completed }}</span>
-                <span>进行中: {{ taskStats.inProgress }}</span>
-                <span>失败: {{ taskStats.failed }}</span>
+                <span>总大小: {{ contentStats.totalSize }} MB</span>
               </div>
             </div>
           </el-card>
         </el-col>
-        
-        <!-- 内容统计卡片 -->
+
+        <!-- 存储统计卡片 -->
         <el-col :span="6">
           <el-card class="stat-card">
             <div class="stat-card-content">
@@ -88,14 +86,13 @@
                 <el-icon><Document /></el-icon>
               </div>
               <div class="stat-info">
-                <div class="stat-value">{{ contentStats.total }}</div>
-                <div class="stat-label">内容总数</div>
+                <div class="stat-value">{{ contentStats.totalSize }}</div>
+                <div class="stat-label">存储空间(MB)</div>
               </div>
             </div>
             <div class="stat-footer">
               <div class="stat-detail">
-                <span>已发布: {{ contentStats.published }}</span>
-                <span>草稿: {{ contentStats.draft }}</span>
+                <span>素材数: {{ contentStats.total }}</span>
               </div>
             </div>
           </el-card>
@@ -116,178 +113,147 @@
             </el-card>
           </el-col>
           <el-col :span="6">
-            <el-card class="action-card">
+            <el-card class="action-card" @click="navigateTo('/material-management')">
               <div class="action-icon">
                 <el-icon><Upload /></el-icon>
               </div>
-              <div class="action-title">内容上传</div>
-              <div class="action-desc">上传视频和图文内容</div>
+              <div class="action-title">素材管理</div>
+              <div class="action-desc">上传和管理视频素材</div>
             </el-card>
           </el-col>
           <el-col :span="6">
-            <el-card class="action-card">
+            <el-card class="action-card" @click="navigateTo('/publish-center')">
               <div class="action-icon">
                 <el-icon><Timer /></el-icon>
               </div>
-              <div class="action-title">定时发布</div>
-              <div class="action-desc">设置内容发布时间</div>
+              <div class="action-title">发布中心</div>
+              <div class="action-desc">发布视频到各平台</div>
             </el-card>
           </el-col>
           <el-col :span="6">
-            <el-card class="action-card">
+            <el-card class="action-card" @click="refreshData">
               <div class="action-icon">
                 <el-icon><DataAnalysis /></el-icon>
               </div>
-              <div class="action-title">数据分析</div>
-              <div class="action-desc">查看内容数据分析</div>
+              <div class="action-title">刷新数据</div>
+              <div class="action-desc">刷新仪表盘统计数据</div>
             </el-card>
           </el-col>
         </el-row>
       </div>
       
-      <!-- 最近任务列表 -->
+      <!-- 最近上传的素材 -->
       <div class="recent-tasks">
         <div class="section-header">
-          <h2>最近任务</h2>
-          <el-button text>查看全部</el-button>
+          <h2>最近上传的素材</h2>
+          <el-button text @click="navigateTo('/material-management')">查看全部</el-button>
         </div>
-        
-        <el-table :data="recentTasks" style="width: 100%">
-          <el-table-column prop="title" label="任务名称" width="250" />
-          <el-table-column prop="platform" label="平台" width="120">
-            <template #default="scope">
-              <el-tag
-                :type="getPlatformTagType(scope.row.platform)"
-                effect="plain"
-              >
-                {{ scope.row.platform }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="account" label="账号" width="150" />
-          <el-table-column prop="createTime" label="创建时间" width="180" />
-          <el-table-column prop="status" label="状态" width="120">
-            <template #default="scope">
-              <el-tag
-                :type="getStatusTagType(scope.row.status)"
-                effect="plain"
-              >
-                {{ scope.row.status }}
-              </el-tag>
-            </template>
-          </el-table-column>
+
+        <el-table :data="recentMaterials" style="width: 100%" v-if="recentMaterials.length > 0">
+          <el-table-column prop="filename" label="文件名" width="300" />
+          <el-table-column prop="filesize" label="大小(MB)" width="120" />
+          <el-table-column prop="upload_time" label="上传时间" width="180" />
           <el-table-column label="操作">
             <template #default="scope">
-              <el-button size="small" @click="viewTaskDetail(scope.row)">查看</el-button>
-              <el-button 
-                size="small" 
-                type="primary" 
-                v-if="scope.row.status === '待执行'"
-                @click="executeTask(scope.row)"
-              >
-                执行
-              </el-button>
-              <el-button 
-                size="small" 
-                type="danger" 
-                v-if="scope.row.status !== '已完成' && scope.row.status !== '已失败'"
-                @click="cancelTask(scope.row)"
-              >
-                取消
-              </el-button>
+              <el-button size="small" @click="viewMaterial(scope.row)">查看</el-button>
             </template>
           </el-table-column>
         </el-table>
+
+        <el-empty v-else description="暂无素材，请先上传" />
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { 
-  User, UserFilled, Platform, List, Document, 
-  Upload, Timer, DataAnalysis 
+import {
+  User, UserFilled, Platform, List, Document,
+  Upload, Timer, DataAnalysis
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { accountApi } from '@/api/account'
+import { materialApi } from '@/api/material'
 
 const router = useRouter()
 
+// API base URL
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5409'
+
 // 账号统计数据
 const accountStats = reactive({
-  total: 12,
-  normal: 10,
-  abnormal: 2
+  total: 0,
+  normal: 0,
+  abnormal: 0
 })
 
 // 平台统计数据
 const platformStats = reactive({
   total: 4,
-  kuaishou: 3,
-  douyin: 4,
-  channels: 2,
-  xiaohongshu: 3
+  kuaishou: 0,
+  douyin: 0,
+  channels: 0,
+  xiaohongshu: 0
 })
 
-// 任务统计数据
-const taskStats = reactive({
-  total: 24,
-  completed: 18,
-  inProgress: 5,
-  failed: 1
-})
-
-// 内容统计数据
+// 内容统计数据（素材）
 const contentStats = reactive({
-  total: 36,
-  published: 30,
-  draft: 6
+  total: 0,
+  totalSize: 0
 })
 
-// 最近任务数据
-const recentTasks = ref([
-  {
-    id: 1,
-    title: '快手视频自动发布',
-    platform: '快手',
-    account: '快手账号1',
-    createTime: '2024-05-01 10:30:00',
-    status: '已完成'
-  },
-  {
-    id: 2,
-    title: '抖音视频定时发布',
-    platform: '抖音',
-    account: '抖音账号1',
-    createTime: '2024-05-01 11:15:00',
-    status: '进行中'
-  },
-  {
-    id: 3,
-    title: '视频号内容上传',
-    platform: '视频号',
-    account: '视频号账号1',
-    createTime: '2024-05-01 14:20:00',
-    status: '待执行'
-  },
-  {
-    id: 4,
-    title: '小红书图文发布',
-    platform: '小红书',
-    account: '小红书账号1',
-    createTime: '2024-05-01 16:45:00',
-    status: '已失败'
-  },
-  {
-    id: 5,
-    title: '快手短视频批量上传',
-    platform: '快手',
-    account: '快手账号2',
-    createTime: '2024-05-02 09:10:00',
-    status: '待执行'
+// 最近上传的素材
+const recentMaterials = ref([])
+
+// 获取仪表盘数据
+const fetchDashboardData = async () => {
+  try {
+    // 获取账号数据
+    const accountRes = await accountApi.getAccounts()
+    if (accountRes.code === 200 && accountRes.data) {
+      const accounts = accountRes.data
+
+      // 计算账号统计
+      accountStats.total = accounts.length
+      accountStats.normal = accounts.filter(acc => acc[4] === 1).length
+      accountStats.abnormal = accounts.filter(acc => acc[4] !== 1).length
+
+      // 计算平台统计 (type: 1=小红书, 2=视频号, 3=抖音, 4=快手)
+      platformStats.xiaohongshu = accounts.filter(acc => acc[1] === 1).length
+      platformStats.channels = accounts.filter(acc => acc[1] === 2).length
+      platformStats.douyin = accounts.filter(acc => acc[1] === 3).length
+      platformStats.kuaishou = accounts.filter(acc => acc[1] === 4).length
+    }
+
+    // 获取素材数据
+    const materialRes = await materialApi.getAllMaterials()
+    if (materialRes.code === 200 && materialRes.data) {
+      const materials = materialRes.data
+
+      // 计算内容统计
+      contentStats.total = materials.length
+      contentStats.totalSize = materials.reduce((sum, m) => sum + (m.filesize || 0), 0).toFixed(2)
+
+      // 获取最近5条素材作为最近上传
+      recentMaterials.value = materials.slice(0, 5).map(m => ({
+        id: m.id,
+        filename: m.filename,
+        filesize: m.filesize,
+        upload_time: m.upload_time,
+        file_path: m.file_path
+      }))
+    }
+  } catch (error) {
+    console.error('获取仪表盘数据失败:', error)
   }
-])
+}
+
+// 页面加载时获取数据
+onMounted(() => {
+  fetchDashboardData()
+})
 
 // 根据平台获取标签类型
 const getPlatformTagType = (platform) => {
@@ -300,80 +266,23 @@ const getPlatformTagType = (platform) => {
   return typeMap[platform] || 'info'
 }
 
-// 根据状态获取标签类型
-const getStatusTagType = (status) => {
-  const typeMap = {
-    '已完成': 'success',
-    '进行中': 'warning',
-    '待执行': 'info',
-    '已失败': 'danger'
-  }
-  return typeMap[status] || 'info'
-}
-
 // 导航到指定路由
 const navigateTo = (path) => {
   router.push(path)
 }
 
-// 查看任务详情
-const viewTaskDetail = (task) => {
-  ElMessage.info(`查看任务: ${task.title}`)
-  // 实际应用中应该跳转到任务详情页面
+// 刷新数据
+const refreshData = () => {
+  ElMessage.info('正在刷新数据...')
+  fetchDashboardData().then(() => {
+    ElMessage.success('数据刷新完成')
+  })
 }
 
-// 执行任务
-const executeTask = (task) => {
-  ElMessageBox.confirm(
-    `确定要执行任务 ${task.title} 吗？`,
-    '提示',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'info',
-    }
-  )
-    .then(() => {
-      // 更新任务状态
-      const index = recentTasks.value.findIndex(t => t.id === task.id)
-      if (index !== -1) {
-        recentTasks.value[index].status = '进行中'
-      }
-      ElMessage({
-        type: 'success',
-        message: '任务已开始执行',
-      })
-    })
-    .catch(() => {
-      // 取消执行
-    })
-}
-
-// 取消任务
-const cancelTask = (task) => {
-  ElMessageBox.confirm(
-    `确定要取消任务 ${task.title} 吗？`,
-    '警告',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning',
-    }
-  )
-    .then(() => {
-      // 更新任务状态
-      const index = recentTasks.value.findIndex(t => t.id === task.id)
-      if (index !== -1) {
-        recentTasks.value[index].status = '已取消'
-      }
-      ElMessage({
-        type: 'success',
-        message: '任务已取消',
-      })
-    })
-    .catch(() => {
-      // 取消操作
-    })
+// 查看素材详情
+const viewMaterial = (material) => {
+  // 跳转到素材管理页面
+  router.push('/material-management')
 }
 </script>
 
