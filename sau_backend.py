@@ -12,6 +12,7 @@ from flask import Flask, request, jsonify, Response, render_template, send_from_
 from conf import BASE_DIR
 from myUtils.login import get_tencent_cookie, douyin_cookie_gen, get_ks_cookie, xiaohongshu_cookie_gen
 from myUtils.postVideo import post_video_tencent, post_video_DouYin, post_video_ks, post_video_xhs
+from myUtils.folder_watcher import folder_watcher
 
 active_queues = {}
 app = Flask(__name__)
@@ -127,7 +128,7 @@ def upload_save():
             VALUES (?, ?, ?)
                                 ''', (filename, round(float(os.path.getsize(filepath)) / (1024 * 1024),2), final_filename))
             conn.commit()
-            print("✅ 上传文件已记录")
+            print("[OK] 上传文件已记录")
 
         return jsonify({
             "code": 200,
@@ -198,7 +199,7 @@ def getAccounts():
             rows = cursor.fetchall()
             rows_list = [list(row) for row in rows]
 
-            print("\n📋 当前数据表内容（快速获取）：")
+            print("\n[INFO] 当前数据表内容（快速获取）：")
             for row in rows:
                 print(row)
 
@@ -225,7 +226,7 @@ async def getValidAccounts():
         SELECT * FROM user_info''')
         rows = cursor.fetchall()
         rows_list = [list(row) for row in rows]
-        print("\n📋 当前数据表内容：")
+        print("\n[INFO] 当前数据表内容：")
         for row in rows:
             print(row)
         for row in rows_list:
@@ -238,7 +239,7 @@ async def getValidAccounts():
                 WHERE id = ?
                 ''', (0,row[0]))
                 conn.commit()
-                print("✅ 用户状态已更新")
+                print("[OK] 用户状态已更新")
         for row in rows:
             print(row)
         return jsonify(
@@ -283,12 +284,12 @@ def delete_file():
             if file_path.exists():
                 try:
                     file_path.unlink()  # 删除文件
-                    print(f"✅ 实际文件已删除: {file_path}")
+                    print(f"[OK] 实际文件已删除: {file_path}")
                 except Exception as e:
-                    print(f"⚠️ 删除实际文件失败: {e}")
+                    print(f"[WARN] 删除实际文件失败: {e}")
                     # 即使删除文件失败，也要继续删除数据库记录，避免数据不一致
             else:
-                print(f"⚠️ 实际文件不存在: {file_path}")
+                print(f"[WARN] 实际文件不存在: {file_path}")
 
             # 删除数据库记录
             cursor.execute("DELETE FROM file_records WHERE id = ?", (file_id,))
@@ -661,6 +662,105 @@ def sse_stream(status_queue):
         else:
             # 避免 CPU 占满
             time.sleep(0.1)
+
+# 文件夹监控相关 API
+
+@app.route('/getWatchFolder', methods=['GET'])
+def get_watch_folder():
+    """获取当前监控的文件夹配置"""
+    try:
+        status = folder_watcher.get_status()
+        return jsonify({
+            "code": 200,
+            "msg": "success",
+            "data": {
+                "watchPath": status.get('watch_path', ''),
+                "isRunning": status.get('is_running', False)
+            }
+        }), 200
+    except Exception as e:
+        return jsonify({
+            "code": 500,
+            "msg": f"获取配置失败: {str(e)}",
+            "data": None
+        }), 500
+
+
+@app.route('/setWatchFolder', methods=['POST'])
+def set_watch_folder():
+    """设置并开始监控文件夹"""
+    try:
+        data = request.get_json()
+        folder_path = data.get('folderPath', '')
+
+        if not folder_path:
+            return jsonify({
+                "code": 400,
+                "msg": "文件夹路径不能为空",
+                "data": None
+            }), 400
+
+        if not os.path.exists(folder_path):
+            return jsonify({
+                "code": 400,
+                "msg": "文件夹不存在",
+                "data": None
+            }), 400
+
+        # 如果已经在监控其他文件夹，先停止
+        if folder_watcher.is_running:
+            folder_watcher.stop_watching()
+
+        # 开始监控新文件夹
+        success = folder_watcher.start_watching(folder_path)
+
+        if success:
+            return jsonify({
+                "code": 200,
+                "msg": "文件夹监控已启动",
+                "data": {"watchPath": folder_path}
+            }), 200
+        else:
+            return jsonify({
+                "code": 500,
+                "msg": "启动监控失败",
+                "data": None
+            }), 500
+
+    except Exception as e:
+        return jsonify({
+            "code": 500,
+            "msg": f"设置失败: {str(e)}",
+            "data": None
+        }), 500
+
+
+@app.route('/stopWatchFolder', methods=['POST'])
+def stop_watch_folder():
+    """停止文件夹监控"""
+    try:
+        success = folder_watcher.stop_watching()
+
+        if success:
+            return jsonify({
+                "code": 200,
+                "msg": "监控已停止",
+                "data": None
+            }), 200
+        else:
+            return jsonify({
+                "code": 400,
+                "msg": "监控未运行",
+                "data": None
+            }), 400
+
+    except Exception as e:
+        return jsonify({
+            "code": 500,
+            "msg": f"停止失败: {str(e)}",
+            "data": None
+        }), 500
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0' ,port=5409)

@@ -32,7 +32,7 @@ async def douyin_cookie_gen(id,status_queue):
         img_locator = page.get_by_role("img", name="二维码")
         # 获取 src 属性值
         src = await img_locator.get_attribute("src")
-        print("✅ 图片地址:", src)
+        print("[OK] 图片地址:", src)
         status_queue.put(src)
         # 监听页面的 'framenavigated' 事件，只关注主框架的变化
         page.on('framenavigated',
@@ -71,7 +71,7 @@ async def douyin_cookie_gen(id,status_queue):
                                 VALUES (?, ?, ?, ?)
                                 ''', (3, f"{uuid_v1}.json", id, 1))
             conn.commit()
-            print("✅ 用户状态已记录")
+            print("[OK] 用户状态已记录")
         status_queue.put("200")
 
 
@@ -112,7 +112,7 @@ async def get_tencent_cookie(id,status_queue):
 
         # 获取 src 属性值
         src = await img_locator.get_attribute("src")
-        print("✅ 图片地址:", src)
+        print("[OK] 图片地址:", src)
         status_queue.put(src)
 
         try:
@@ -150,7 +150,7 @@ async def get_tencent_cookie(id,status_queue):
                                 VALUES (?, ?, ?, ?)
                                 ''', (2, f"{uuid_v1}.json", id, 1))
             conn.commit()
-            print("✅ 用户状态已记录")
+            print("[OK] 用户状态已记录")
         status_queue.put("200")
 
 # 快手登录
@@ -183,7 +183,7 @@ async def get_ks_cookie(id,status_queue):
         # 获取 src 属性值
         src = await img_locator.get_attribute("src")
         original_url = page.url
-        print("✅ 图片地址:", src)
+        print("[OK] 图片地址:", src)
         status_queue.put(src)
         # 监听页面的 'framenavigated' 事件，只关注主框架的变化
         page.on('framenavigated',
@@ -224,7 +224,7 @@ async def get_ks_cookie(id,status_queue):
                                         VALUES (?, ?, ?, ?)
                                         ''', (4, f"{uuid_v1}.json", id, 1))
             conn.commit()
-            print("✅ 用户状态已记录")
+            print("[OK] 用户状态已记录")
         status_queue.put("200")
 
 # 小红书登录
@@ -257,7 +257,7 @@ async def xiaohongshu_cookie_gen(id,status_queue):
         # 获取 src 属性值
         src = await img_locator.get_attribute("src")
         original_url = page.url
-        print("✅ 图片地址:", src)
+        print("[OK] 图片地址:", src)
         status_queue.put(src)
         # 监听页面的 'framenavigated' 事件，只关注主框架的变化
         page.on('framenavigated',
@@ -298,7 +298,7 @@ async def xiaohongshu_cookie_gen(id,status_queue):
                            VALUES (?, ?, ?, ?)
                            ''', (1, f"{uuid_v1}.json", id, 1))
             conn.commit()
-            print("✅ 用户状态已记录")
+            print("[OK] 用户状态已记录")
         status_queue.put("200")
 
 # a = asyncio.run(xiaohongshu_cookie_gen(4,None))

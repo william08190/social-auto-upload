@@ -5,6 +5,44 @@
     </div>
     
     <div class="material-list-container">
+      <!-- 文件夹监控设置区域 -->
+      <div class="folder-watch-section">
+        <div class="folder-watch-header">
+          <h3>文件夹监控</h3>
+          <el-tag :type="isWatching ? 'success' : 'info'" size="small">
+            {{ isWatching ? '监控中' : '已停止' }}
+          </el-tag>
+        </div>
+        <div class="folder-watch-controls">
+          <el-input
+            v-model="watchFolderPath"
+            placeholder="请输入要监控的文件夹路径"
+            :disabled="isWatching"
+            clearable
+            style="flex: 1; margin-right: 10px;"
+          />
+          <el-button
+            v-if="!isWatching"
+            type="primary"
+            @click="startWatching"
+            :disabled="!watchFolderPath"
+          >
+            开始监控
+          </el-button>
+          <el-button
+            v-else
+            type="danger"
+            @click="stopWatching"
+          >
+            停止监控
+          </el-button>
+        </div>
+        <div class="folder-watch-tip">
+          <el-icon><InfoFilled /></el-icon>
+          <span>启用后，系统将自动监控指定文件夹中的新视频文件，并自动导入到素材库中</span>
+        </div>
+      </div>
+
       <div class="material-search">
         <el-input
           v-model="searchKeyword"
@@ -141,8 +179,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
-import { Refresh, Upload } from '@element-plus/icons-vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { Refresh, Upload, InfoFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { materialApi } from '@/api/material'
 import { useAppStore } from '@/stores/app'
@@ -154,6 +192,11 @@ const appStore = useAppStore()
 const searchKeyword = ref('')
 const isRefreshing = ref(false)
 const isUploading = ref(false)
+
+// 文件夹监控相关
+const watchFolderPath = ref('')
+const isWatching = ref(false)
+let autoRefreshInterval = null
 
 // 对话框控制
 const uploadDialogVisible = ref(false)
@@ -383,12 +426,108 @@ const isImageFile = (filename) => {
   return imageExtensions.some(ext => filename.toLowerCase().endsWith(ext))
 }
 
-// 组件挂载时获取素材列表
+// 文件夹监控相关函数
+
+// 获取当前监控状态
+const getWatchStatus = async () => {
+  try {
+    const response = await materialApi.getWatchFolder()
+    if (response.code === 200 && response.data) {
+      watchFolderPath.value = response.data.watchPath || ''
+      isWatching.value = response.data.isRunning || false
+
+      // 如果正在监控，启动自动刷新
+      if (isWatching.value) {
+        startAutoRefresh()
+      }
+    }
+  } catch (error) {
+    console.error('获取监控状态失败:', error)
+  }
+}
+
+// 开始监控
+const startWatching = async () => {
+  if (!watchFolderPath.value.trim()) {
+    ElMessage.warning('请输入文件夹路径')
+    return
+  }
+
+  try {
+    const response = await materialApi.setWatchFolder(watchFolderPath.value.trim())
+    if (response.code === 200) {
+      isWatching.value = true
+      ElMessage.success('文件夹监控已启动')
+      startAutoRefresh()
+      // 立即刷新一次素材列表
+      await fetchMaterials()
+    } else {
+      ElMessage.error(response.msg || '启动监控失败')
+    }
+  } catch (error) {
+    console.error('启动监控失败:', error)
+    ElMessage.error('启动监控失败')
+  }
+}
+
+// 停止监控
+const stopWatching = async () => {
+  try {
+    const response = await materialApi.stopWatchFolder()
+    if (response.code === 200) {
+      isWatching.value = false
+      ElMessage.success('文件夹监控已停止')
+      stopAutoRefresh()
+    } else {
+      ElMessage.error(response.msg || '停止监控失败')
+    }
+  } catch (error) {
+    console.error('停止监控失败:', error)
+    ElMessage.error('停止监控失败')
+  }
+}
+
+// 启动自动刷新
+const startAutoRefresh = () => {
+  // 如果已有定时器，先清除
+  if (autoRefreshInterval) {
+    clearInterval(autoRefreshInterval)
+  }
+
+  // 每5秒自动刷新一次素材列表
+  autoRefreshInterval = setInterval(async () => {
+    try {
+      const response = await materialApi.getAllMaterials()
+      if (response.code === 200) {
+        appStore.setMaterials(response.data)
+      }
+    } catch (error) {
+      console.error('自动刷新素材列表失败:', error)
+    }
+  }, 5000)
+}
+
+// 停止自动刷新
+const stopAutoRefresh = () => {
+  if (autoRefreshInterval) {
+    clearInterval(autoRefreshInterval)
+    autoRefreshInterval = null
+  }
+}
+
+// 组件挂载时获取素材列表和监控状态
 onMounted(() => {
   // 只有store中没有数据时才获取
   if (appStore.materials.length === 0) {
     fetchMaterials()
   }
+  // 获取监控状态
+  getWatchStatus()
+})
+
+// 组件卸载时清除定时器
+onUnmounted(() => {
+  stopAutoRefresh()
 })
 </script>
 
@@ -422,7 +561,49 @@ onMounted(() => {
     border-radius: 4px;
     box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
     padding: 20px;
-    
+
+    .folder-watch-section {
+      background-color: #f5f7fa;
+      border-radius: 4px;
+      padding: 15px;
+      margin-bottom: 20px;
+      border: 1px solid #e4e7ed;
+
+      .folder-watch-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+
+        h3 {
+          font-size: 16px;
+          font-weight: 500;
+          color: $text-primary;
+          margin: 0;
+        }
+      }
+
+      .folder-watch-controls {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      .folder-watch-tip {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #909399;
+        margin-top: 10px;
+
+        .el-icon {
+          font-size: 16px;
+          color: #409eff;
+        }
+      }
+    }
+
     .material-search {
       display: flex;
       justify-content: space-between;

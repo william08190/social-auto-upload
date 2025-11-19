@@ -26,5 +26,21 @@ export const materialApi = {
   // 获取素材预览URL
   getMaterialPreviewUrl: (filename) => {
     return `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5409'}/getFile?filename=${filename}`
+  },
+
+  // 文件夹监控相关 API
+  // 获取当前监控的文件夹配置
+  getWatchFolder: () => {
+    return http.get('/getWatchFolder')
+  },
+
+  // 设置并开始监控文件夹
+  setWatchFolder: (folderPath) => {
+    return http.post('/setWatchFolder', { folderPath })
+  },
+
+  // 停止文件夹监控
+  stopWatchFolder: () => {
+    return http.post('/stopWatchFolder')
   }
 }
